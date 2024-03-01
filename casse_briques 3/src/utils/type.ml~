@@ -1,0 +1,1 @@
+type nature = Player of int | Block | Ball | Wall

@@ -1,0 +1,34 @@
+open Component_defs
+open System_defs
+
+let make x y width height text =
+  let b =
+    object
+      inherit position
+      inherit box
+      inherit texture
+      (* Question 2 *)
+
+      inherit mass
+      inherit velocity
+      inherit touched
+      inherit sum_forces
+    end
+  in
+  b#touched#set false;
+  b#position#set Vector.{ x; y };
+  b#box#set Rect.{ width; height };
+  b#texture#set text;
+  Draw_system.register (b :> Draw_system.t);
+  b#mass#set infinity;
+  Move_system.register (b :> Move_system.t);
+  Force_system.register (b :> Force_system.t);
+  Collision_system.register (b :> Collision_system.t);
+  b
+
+let destroy b =
+  Draw_system.unregister (b :> Draw_system.t);
+  Move_system.unregister (b :> Move_system.t);
+  Force_system.unregister (b :> Force_system.t);
+  Collision_system.unregister (b :> Collision_system.t);
+  

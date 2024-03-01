@@ -1,0 +1,117 @@
+open System_defs
+
+(* On crée une fenêtre *)
+let init () =
+  let win = Gfx.create (Format.sprintf "game_canvas:%dx%d:" 1000 600) in
+  Game_state.set_window win
+
+let vies = ref 2
+
+let main_planche_width = 60
+let petite_planche_width = 40
+let gap_width = 30
+let p_width = 2 * petite_planche_width + 2 * gap_width + main_planche_width
+
+let p1, p2, p3 =
+  Entity.Player.make 450.0 550.0 main_planche_width 10 (Texture.Color (Gfx.color 255 121 0 255)) gap_width petite_planche_width
+
+let ball =
+    let x = 480. in
+    let y = 500. in
+    let mass = 5. in
+    let s = Entity.Ball.make x y 30 30 (Texture.Color (Gfx.color 255 255 255 255)) mass in
+    s#sum_forces#set Vector.{ x = 0.0; y = -0.12 };
+    s
+
+let bricks =
+  let width = 10 in (* laisser à 10 *)
+  let size = 60 in (* multiple de 10 *)
+  List.init size
+    (fun i -> (Entity.Brique.make
+                 (60.0 +. 90.0 *. (float_of_int (i mod width)))
+                 (100.0 +. 30.0 *. (float_of_int (i / width)))
+                 70 20
+                 (let r = int_of_float ((float_of_int (i mod width)) /. (float_of_int (width-1)) *. 255.0) in
+                  let g = 255 - (int_of_float ((float_of_int i) /. (float_of_int size) *. 255.0)) in
+                  let b = int_of_float (255.0 *. ((float_of_int i) /. (float_of_int size))) in
+                    Texture.Color (Gfx.color r g b 255))))
+
+let load_all_images () =
+  List.iter Surface_manager.load_surface [ 
+  "resources/images/ball.png";
+  "resources/images/wp.png";
+  ]
+
+let wait_for_images _dt =
+  Format.eprintf "Waiting for images\n%!";
+  not (Surface_manager.all_loaded ())
+
+let init_walls () =
+  let blue = Gfx.color 0 100 255 255 in
+  ignore (Entity.Block.make 0.0 0.0 1000 40 (Texture.Color blue) infinity);
+  ignore (Entity.Block.make 0.0 40.0 40 440 (Texture.Color blue) infinity);
+  ignore (Entity.Block.make 960.0 40.0 40 440 (Texture.Color blue) infinity)
+
+let init_wp _dt =
+  ignore(Draw.set_wp "resources/images/wp.png");
+  false
+
+let update_bricks _dt =
+  bricks = List.filter
+             (fun b -> let touched = b#touched#get in
+                       if touched then
+                         (ignore (Entity.Block.destroy b)); not touched
+                       ) bricks
+
+let keys = Hashtbl.create 16
+
+let update dt =
+  let () =
+    match Gfx.poll_event () with
+    | Gfx.NoEvent -> ()
+    | Gfx.KeyDown s ->
+        Gfx.debug "%s@\n%!" s;
+        Hashtbl.replace keys s ()
+    | Gfx.KeyUp s -> Hashtbl.remove keys s
+  in
+  let Vector.{ x; y } = p1#position#get in
+  let x = if Hashtbl.mem keys "ArrowLeft" && x > 0. then x -. 10.0 else x in
+  let x = if Hashtbl.mem keys "ArrowRight" && x < 1000. -. (float_of_int p_width) then x +. 10.0 else x in
+  p1#position#set Vector.{ x; y };
+  p2#position#set Vector.{ x = x +. (float_of_int petite_planche_width) +. (float_of_int gap_width); y };
+  p3#position#set Vector.{ x = x +. (float_of_int petite_planche_width) +. 2. *. (float_of_int gap_width) +. (float_of_int main_planche_width) ; y };
+  ignore(update_bricks dt);
+  Collision_system.update dt;
+  Force_system.update dt;
+  Move_system.update dt;
+  Draw_system.update dt;
+  true
+
+let init_ball _dt =
+  let surface = Surface_manager.get_surface "resources/images/ball.png" in
+  ball#texture#set (Texture.Surface surface);
+  false
+
+let chain_functions l =
+  let funs = ref l in
+  fun dt -> 
+    match !funs with
+    [] -> false
+    | f :: ll ->
+      if f dt then true
+      else begin
+        funs := ll;
+        true
+      end
+
+
+let run () =
+  init ();
+  load_all_images ();
+  init_walls ();
+  Gfx.main_loop ( chain_functions [ 
+    wait_for_images;
+    init_wp;
+    init_ball;
+    update ])
+    

@@ -1,0 +1,12 @@
+open Component_defs
+open System_defs
+
+let make x y width height text =
+  let b =
+    Block.make x y width height text infinity
+  in
+  b#nature#set Type.Block;
+  b
+
+let destroy b = Block.destroy b
+  
