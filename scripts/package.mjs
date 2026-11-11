@@ -4,9 +4,10 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 await mkdir(path.join(root, 'dist'), {recursive:true});
-for (const name of ['index.html','app.js','style.css','favicon.svg']) {
+for (const name of ['index.html','app.js','style.css','tokens.css','favicon.svg']) {
   await copyFile(path.join(root,'web',name), path.join(root,'dist',name));
 }
+await cp(path.join(root,'web/fonts'),path.join(root,'dist/fonts'),{recursive:true});
 await copyFile(path.join(root,'_build/default/web/main.bc.js'),path.join(root,'dist/game.bc.js'));
 await cp(path.join(root,'licenses'),path.join(root,'dist/licenses'),{recursive:true});
 await copyFile(path.join(root,'NOTICE.md'),path.join(root,'dist/NOTICE.md'));

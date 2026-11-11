@@ -12,3 +12,5 @@ Le bundle JavaScript est produit à partir du code OCaml avec js_of_ocaml. Les c
 | js_of_ocaml 6.2.0 | [LICENSE officiel](https://github.com/ocsigen/js_of_ocaml/blob/6.2.0/LICENSE) | `licenses/js_of_ocaml-6.2.0-LICENSE.txt` |
 
 Ces fichiers incluent leurs clauses et exceptions de liaison. Ils sont copiés avec le bundle public dans `dist/licenses/`. La démo charge des fichiers locaux, sans appel réseau nécessaire au gameplay.
+
+Les polices de l'interface, Newsreader, IBM Plex Sans et IBM Plex Mono, sont distribuées sous SIL Open Font License 1.1. Les fichiers `web/fonts/` sont copiés dans `dist/fonts/` et leurs notices (`licenses/*-OFL.txt`) dans `dist/licenses/`.
