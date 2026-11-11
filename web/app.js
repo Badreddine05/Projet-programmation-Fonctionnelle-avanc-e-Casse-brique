@@ -668,7 +668,7 @@
     .then(response => (response.ok ? response.json() : null))
     .then(info => {
       if (info?.commit && /^[0-9a-f]{40}$/.test(info.commit)) {
-        ui.build.innerHTML = `Moteur compilé depuis le commit <code>${info.commit.slice(0, 7)}</code>.`;
+        ui.build.innerHTML = `Page assemblée depuis le commit <code>${info.commit.slice(0, 7)}</code> du dépôt.`;
       }
     })
     .catch(() => {});
