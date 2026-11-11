@@ -1,97 +1,79 @@
-# REBOUND — casse-briques en OCaml
+<p align="center">
+  <img src=".github/readme/rebound-mark.svg" width="56" height="56" alt="">
+</p>
 
-Une refonte du projet de programmation fonctionnelle avancée de 2024 : le moteur est écrit en OCaml, testé en natif et compilé en JavaScript avec **js_of_ocaml**. Le navigateur affiche l'état du même moteur ; il ne possède pas une seconde simulation.
+<h1 align="center">REBOUND</h1>
 
-> La refonte du moteur et sa chaîne de compilation sont en cours de validation. Le frontend est développé séparément. La coque présente dans `web/` est provisoire ; aucune démo finale n'est annoncée tant que sa vérification n'est pas terminée.
+<p align="center">
+  Un casse-briques dont toute la logique est écrite en OCaml, testée en natif<br>
+  et compilée en JavaScript avec js_of_ocaml pour tourner dans le navigateur.
+</p>
 
-## Ce qui change
+<p align="center">
+  <a href="https://badreddine05.github.io/rebound/"><strong>Jouer dans le navigateur</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/ARCHITECTURE.md">Le moteur et la physique</a>
+  &nbsp;·&nbsp;
+  <a href="https://badreddine05.github.io/">Portfolio</a>
+</p>
 
-- Cinq niveaux avec des dispositions différentes et des briques à plusieurs points de résistance.
-- Trois vies, score, combos, progression et états explicites : menu, préparation, partie, pause, niveau terminé, victoire et défaite.
-- Trois difficultés. Deux modes de raquette : classique, avec angle de rebond piloté par le point d'impact ; Héritage, à trois segments séparés comme dans le projet de 2024.
-- Simulation déterministe à 120 Hz, indépendante de la fréquence de rafraîchissement. Détection continue des collisions cercle/rectangle avec coins arrondis ; résolution des contacts simultanés et séparation des chevauchements.
-- Tests du moteur natif, tests du vrai bridge compilé et construction d'un site statique sans dépendance réseau au runtime.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/readme/rebound-dark.png">
+  <img alt="REBOUND dans le navigateur : la raquette, la balle et un mur de briques" src=".github/readme/rebound-light.png">
+</picture>
 
-Les fichiers de 2024 restent disponibles dans `casse_briques 3/`. Leurs auteurs et leurs dates Git ne sont pas modifiés. La refonte ne présente pas le squelette pédagogique ECS/gfx comme du code entièrement écrit par l'auteur du dépôt ; voir [les crédits et notices](NOTICE.md).
+## Le jeu
 
-## Construire et lancer
+Cinq niveaux aux dispositions différentes et trois vies. À partir du troisième niveau, certaines briques demandent deux impacts, et jusqu'à trois au cinquième. La balle accélère un peu à chaque brique, jusqu'à un plafond qui dépend de la difficulté : Calme, Normal ou Expert.
 
-La voie de référence est Linux avec [opam](https://opam.ocaml.org/doc/Install.html), OCaml **5.3.0**, Dune **3.20.2**, js_of_ocaml **6.2.0** et Node.js **22 ou plus**. Les versions directes sont fixées dans `rebound.opam`. Le résolveur opam choisit encore certaines dépendances transitives : ce n'est pas une image hermétique complète.
+Deux raquettes sont proposées. La raquette classique renvoie la balle avec un angle qui dépend du point d'impact. La raquette « Héritage · 2024 » reprend celle du projet d'origine, en trois segments séparés, avec de vrais trous par lesquels la balle peut passer.
 
-```sh
-git clone https://github.com/Badreddine05/Projet-programmation-Fonctionnelle-avanc-e-Casse-brique.git
-cd Projet-programmation-Fonctionnelle-avanc-e-Casse-brique
-opam switch create . 5.3.0 --no-install
-opam install . --deps-only --with-test -y
-opam exec -- dune runtest
-opam exec -- dune build --profile release web/main.bc.js
-node scripts/package.mjs
-node test/bridge.test.cjs
-python3 -m http.server 8080 --directory dist
+Chaque point de résistance retiré rapporte 25 points. Une brique détruite en rapporte 75, plus 10 fois le combo en cours, plafonné à 10 ; le combo compte les briques cassées depuis le dernier rebond sur la raquette. Un niveau terminé ajoute 500 points.
+
+## Commandes
+
+- Clavier : les flèches, A/D ou Q/D pour déplacer la raquette, Espace pour lancer la balle, P ou Échap pour la pause, Entrée pour l'action proposée.
+- Souris : la raquette suit le pointeur et un clic lance la balle. Sur écran tactile, on glisse le doigt sur le terrain ou on maintient les boutons gauche et droite, avec un bouton pour lancer.
+- Le menu règle la difficulté et la raquette. Le meilleur score est gardé pour chaque combinaison. Le jeu se met en pause quand l'onglet est masqué ou que la fenêtre perd le focus, sans reprise automatique.
+
+## Comment c'est construit
+
+```mermaid
+flowchart LR
+  A["Clavier, souris<br/>ou écran tactile"] --> B["Interface web<br/>Canvas"]
+  B -->|commandes et temps écoulé| C["Moteur OCaml<br/>états, niveaux, score"]
+  C --> D["Physique<br/>impacts et rebonds"]
+  D -->|état du jeu en JSON| B
 ```
 
-Ouvrir ensuite `http://localhost:8080`. Le serveur Python ne compile rien : il sert seulement le dossier statique. Un autre serveur HTTP statique convient. Aucun secret, compte, backend ou service distant n'est nécessaire pour jouer.
+Le moteur avance par pas fixes de 1/120 s, quelle que soit la fréquence de l'écran : le jeu va à la même vitesse à 60 ou à 144 Hz, et les mêmes commandes donnent toujours la même partie. Pour chaque pas, il cherche le premier instant où la balle touche un mur, la raquette ou une brique. Une balle rapide ne peut donc pas traverser une brique entre deux images, et les coins des briques se comportent comme des arrondis.
 
-Sans OCaml local, lancer le workflow **OCaml core and browser bundle** depuis l'onglet Actions. L'artefact `rebound-web` rassemble le site dans `dist/` et la sortie des tests natifs. Il permet de vérifier le vrai programme compilé sur une autre machine. Le workflow ne déploie pas automatiquement le site.
+Le navigateur ne fait aucune simulation de son côté : il envoie les commandes, reçoit l'état calculé par le moteur et le dessine. Les tests natifs couvrent les collisions à haute vitesse, les coins, les contacts simultanés, l'équivalence entre 30, 60 et 144 Hz, la pause, les vies et la progression. Un autre test charge le vrai fichier JavaScript produit par js_of_ocaml et joue 300 images.
 
-Le packaging utilise uniquement les modules standards de Node. Il copie le moteur généré et les assets déclarés, ajoute les notices et un `build-info.json` avec le commit source et l'heure réelle de construction. Ne pas éditer le JavaScript produit : modifier les sources OCaml puis recompiler.
+## Lancer le projet
 
-## Architecture
+La compilation demande OCaml 5.3.0, Dune 3.20.2, js_of_ocaml 6.2.0 et Node.js 22 ou plus récent, de préférence sous Linux avec opam : les étapes sont dans [docs/BUILD.md](docs/BUILD.md). Sans OCaml sur sa machine, on peut lancer le workflow GitHub Actions du dépôt, qui fournit le site construit et le résultat des tests en artefact (`rebound-web`).
 
-```text
-Entrées clavier / pointeur
-           │
-           ▼
-    web/app.js ── commandes + temps écoulé ──► web/main.ml
-           ▲                                     │
-           │                                     ▼
-           │                               core/game.ml
-           │                           états, niveaux, score
-           │                                     │
-           │                                     ▼
-           │                              core/physics.ml
-           │                             impacts et rebonds
-           │                                     │
-           └────────── snapshot JSON ─────────────┘
-           │
-           ▼
-       Canvas + HUD
-```
+## Histoire du projet
 
-`core/` dépend seulement de la bibliothèque standard OCaml. Une étape reçoit un état immuable, un intervalle de temps et des entrées ; elle produit l'état suivant. Le bridge gère une référence vers l'état courant et expose quatre fonctions. JavaScript s'occupe du rendu, des périphériques et des effets visuels.
+Le casse-briques est né en 2024 dans un cours de programmation fonctionnelle avancée, sur un squelette pédagogique fourni (architecture ECS, rendu SDL et js_of_ocaml). Ces fichiers restent inchangés dans [`casse_briques 3/`](casse_briques%203/), tout comme le rapport et l'archive d'origine à la racine du dépôt, avec leur historique Git.
 
-La racine Dune ne parcourt que `core`, `web` et `test`. Le projet historique conserve sa propre configuration et ses dépendances SDL dans son dossier ; il n'interfère pas avec la nouvelle compilation web. La version native moderne sert aux tests, pas à une nouvelle interface SDL.
+La refonte de 2026 réécrit le moteur de façon indépendante dans `core/`, en OCaml standard, et garde la raquette en trois segments comme mode de jeu. [NOTICE.md](NOTICE.md) précise ce qui vient de chaque période.
 
-Le contrat détaillé du bridge, les commandes et les exigences du frontend sont dans [FRONTEND_HANDOFF.md](FRONTEND_HANDOFF.md).
+## Limites
 
-## Physique et règles
+- Cinq niveaux écrits à la main, sans génération aléatoire, et une seule balle à la fois.
+- La physique est faite pour ce jeu : pas de rotation, de masse ni de rebond entre plusieurs balles.
 
-Le terrain logique mesure 1000 × 640 pixels. Les vitesses sont exprimées en pixels par seconde. Un accumulateur consomme le temps en pas de 1/120 s ; chaque appel est limité à 0,25 s et 30 pas pour éviter une longue reprise après suspension. Une pause ne consomme aucun temps de simulation.
+## Licence et crédits
 
-Pour chaque pas, le moteur cherche le premier instant de contact du cercle mobile avec les murs, les raquettes et les briques vivantes. Les faces utilisent une intersection analytique ; les coins utilisent l'intersection avec un cercle. Cette approche évite à la fois la traversée d'une brique à haute vitesse et les faux contacts dans les coins d'un simple rectangle agrandi. Les contacts ayant le même instant sont regroupés. La normale reste définie même quand le centre de la balle est exactement sur un bord ou dans un rectangle.
+Le nouveau code est sous licence MIT, avec une portée précisée dans [LICENSE-new-code.txt](LICENSE-new-code.txt) ; les fichiers de 2024 ne sont pas couverts par cette licence. Les notices d'OCaml, de js_of_ocaml et des polices sont distribuées avec le jeu, dans [`licenses/`](licenses/).
 
-Après un impact, la balle est légèrement séparée de la surface, les briques touchées perdent un point de résistance et le temps restant est simulé. Le nombre de résolutions est borné à huit par pas. Ce moteur est conçu pour ce casse-briques : il n'est pas un solveur universel de corps rigides et ne simule ni rotation, ni masse, ni rebond entre plusieurs balles.
+Projet de cours de 2024 ; refonte par [Badreddine Channoufi](https://badreddine05.github.io/), avec l'aide d'outils d'IA. Les commits portent leurs dates réelles.
 
-Le déplacement de la raquette est borné à 740 px/s. La balle accélère légèrement lorsqu'elle frappe une brique, avec un plafond propre à chaque difficulté. Les trous de la raquette Héritage sont réellement traversables.
+<details>
+<summary>English summary</summary>
 
-Le score est déterminé par le moteur : 25 points par point de résistance retiré, puis `75 + 10 × min(combo, 10)` par brique détruite, et 500 points par niveau terminé. Un contact sur le dessus de la raquette ou une vie perdue remet le combo courant à zéro. Les cinq niveaux sont finis, sans génération aléatoire ; les mêmes commandes et intervalles de temps donnent les mêmes résultats.
+REBOUND is a brick breaker whose whole game logic is written in OCaml, tested natively and compiled to JavaScript with js_of_ocaml. The deterministic core advances in fixed 1/120 s steps and finds the exact time of each impact, so fast balls never tunnel through bricks. The browser only sends commands and draws the state the engine returns.
 
-## Vérifications
-
-`test/core_tests.ml` couvre notamment la collision à haute vitesse, le centre sur un bord, les coins, le contact en séparation, deux murs simultanés, l'équivalence à 30/60/144 Hz, la pause, les vies, les armures, la progression, les angles de raquette, les vrais trous du mode Héritage, les entrées non finies et la limitation des longues frames. Une simulation de 30 000 frames utilise une graine fixe et contrôle les invariants de position, vies et résistance.
-
-`test/bridge.test.cjs` charge le véritable artefact produit par js_of_ocaml, configure une partie, simule 300 frames, vérifie les nombres finis et exerce pause, reprise, menu et réinitialisation. Il ne substitue aucun moteur JavaScript au code OCaml. La CI exécute ces vérifications sur chaque push et pull request, puis fournit le site construit en artefact.
-
-La vérification visuelle et les interactions de la nouvelle interface doivent être complétées après intégration du frontend. Une réussite des tests du moteur ne constitue pas une validation d'accessibilité ou de navigation mobile.
-
-## Présenter ce projet en entretien
-
-- Expliquer le défaut initial de normalisation d'un vecteur nul et montrer le test d'un centre exactement sur un bord.
-- Comparer une détection après déplacement à la recherche d'un instant de collision : une balle rapide peut traverser une brique dans le premier cas.
-- Justifier le pas fixe : une vitesse en pixels par frame accélère le jeu sur un écran à 144 Hz ; une vitesse en pixels par seconde et un accumulateur conservent les règles.
-- Montrer la séparation modèle/rendu et le même core utilisé par les tests natifs et le navigateur.
-- Présenter les limites sans les masquer : cinq niveaux écrits à la main, une balle, raquette déplacée à chaque pas, résolution bornée et projet historique conservé séparément.
-
-## Licence et historique
-
-Le nouveau code dispose d'une [licence MIT dont la portée est explicitée](LICENSE-new-code.txt). Les fichiers historiques, le rapport et l'archive ne sont pas requalifiés par cette licence. Les notices OCaml et js_of_ocaml sont conservées à l'identique dans `licenses/` et distribuées avec le bundle. Le code original date de 2024 ; les améliorations actuelles portent leurs dates réelles de commit.
+</details>
