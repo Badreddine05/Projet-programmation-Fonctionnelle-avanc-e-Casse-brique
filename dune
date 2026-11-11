@@ -1,0 +1,2 @@
+; Keep the original 2024 coursework intact, outside the modern build graph.
+(dirs core web test)

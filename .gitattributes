@@ -1,0 +1,2 @@
+# Preserve the exact upstream notice bytes on every platform.
+licenses/*.txt -text

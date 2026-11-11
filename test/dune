@@ -1,0 +1,3 @@
+(test
+ (name core_tests)
+ (libraries breakout_core))

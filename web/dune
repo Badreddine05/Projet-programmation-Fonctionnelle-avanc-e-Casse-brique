@@ -1,0 +1,4 @@
+(executable
+ (name main)
+ (modes js)
+ (libraries breakout_core js_of_ocaml))

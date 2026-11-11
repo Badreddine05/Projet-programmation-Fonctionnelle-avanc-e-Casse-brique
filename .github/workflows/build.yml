@@ -1,0 +1,37 @@
+name: OCaml core and browser bundle
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: '5.3.0'
+          dune-cache: true
+      - run: opam install . --deps-only --with-test -y
+      - name: Test the native OCaml core
+        shell: bash
+        run: |
+          set -o pipefail
+          opam exec -- dune runtest 2>&1 | tee test-results.txt
+      - name: Compile the same core for the browser
+        run: opam exec -- dune build --profile release web/main.bc.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/package.mjs
+      - name: Verify the compiled OCaml bridge
+        run: node test/bridge.test.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rebound-web
+          path: |
+            dist/
+            test-results.txt
+          if-no-files-found: error
